@@ -7,3 +7,5 @@ Includes a simple graphical interface to roll the dices.
 Font downloaded from http://www.fontspace.com/pixel-sagas/rebellion
 
 This program does not include the force dice.
+
+Requires C++11 able compiler and SFML libraries.
