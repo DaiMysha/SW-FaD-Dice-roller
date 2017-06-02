@@ -22,6 +22,14 @@ const int challengeResult[] =   {MASSIVE, DOUBLE_MINOR, DOUBLE_MAJOR, MAJOR,    
 
 const int diceSize = 139;
 
+void drawDice(sf::RenderTarget& target, int x, int y, sf::RectangleShape& dice, DiceType type, ResultType result, float scale)
+{
+	dice.setScale(scale, scale);
+	dice.setPosition(x, y);
+	dice.setTextureRect(sf::IntRect(type*diceSize, type*diceSize, diceSize, diceSize));
+	target.draw(dice);
+}
+
 int main(int argc, char** argv)
 {
     /** SFML STUFF **/
@@ -47,6 +55,8 @@ int main(int argc, char** argv)
     rectangle.setTextureRect(sf::IntRect(0,0,diceSize,diceSize));
     int x = 0;
     int y = 0;
+
+	int diceCount[MIXED + 1] = { 0 };
 
     //the loop
     while (window.isOpen())
@@ -77,16 +87,11 @@ int main(int argc, char** argv)
         }
         window.clear(sf::Color(127,127,127));
 
-        rectangle.setPosition(0,0);
-        rectangle.setTextureRect(sf::IntRect(x*diceSize,y*diceSize,diceSize,diceSize));
-        window.draw(rectangle);
-
-        rectangle.setPosition(diceSize,0);
-        rectangle.setTextureRect(sf::IntRect((x+1)*diceSize,y*diceSize,diceSize,diceSize));
-        window.draw(rectangle);
+		drawDice(window, 0, 0, rectangle, DiceType(x), ResultType(y), 0.3);
+        
         window.display();
         ++x;
-        if(x >= CHALLENGE)
+        if(x > CHALLENGE)
         {
             x = 0;
             ++y;
@@ -95,7 +100,7 @@ int main(int argc, char** argv)
                 y = 0;
             }
         }
-        sf::sleep(sf::milliseconds(200));
+        sf::sleep(sf::milliseconds(100));
     }
 
     return 0;
