@@ -1,6 +1,7 @@
 #include <iostream>
 #include <sstream>
 #include <array>
+#include <list>
 
 #include <SFML/Graphics.hpp>
 
@@ -12,17 +13,20 @@ enum DiceType   { D100, BOOST,   ABILITY, PROFICIENCY, SETBACK,   DIFFICULTY, CH
 enum ResultType {EMPTY, MINOR, MAJOR, MASSIVE, DOUBLE_MINOR, DOUBLE_MAJOR, MIXED};
 
 //these tables are used to correspond to the actual placement in the real dices
-//                              1         2             3             4             5             6      7             8      9            10             11     12
+//                              1         2             3             4             5             6			7               8		 9            10             11     12
 const int boostResult[] =       {EMPTY,   DOUBLE_MINOR, MINOR,        MAJOR,        MIXED,        EMPTY};
-const int abilityResult[] =     {EMPTY,   DOUBLE_MAJOR, MINOR,        MAJOR,        MAJOR,        MINOR, DOUBLE_MINOR, MIXED};
-const int proficiencyResult[] = {EMPTY,   MIXED,        DOUBLE_MINOR, MIXED,        MAJOR,        MAJOR, MAJOR,        MAJOR, MINOR,        DOUBLE_MINOR, MIXED, MASSIVE};
-const int setbackResult[] =     {EMPTY,                 MAJOR,        MINOR,        MINOR,        MAJOR, EMPTY};
-const int difficultyResult[] =  {EMPTY,   MINOR,        MIXED,        DOUBLE_MAJOR, MINOR,        MINOR, DOUBLE_MINOR, MAJOR};
-const int challengeResult[] =   {MASSIVE, DOUBLE_MINOR, DOUBLE_MAJOR, MAJOR,        DOUBLE_MAJOR, MINOR, MAJOR,        MINOR, DOUBLE_MINOR, MIXED,        MIXED, EMPTY};
+const int abilityResult[] =     {EMPTY,   DOUBLE_MAJOR, MINOR,        MAJOR,        MAJOR,        MINOR,	DOUBLE_MINOR,	MIXED};
+const int proficiencyResult[] = {EMPTY,   MIXED,        DOUBLE_MINOR, MIXED,        MAJOR,        MAJOR,	MAJOR,			 MAJOR,	 MINOR,        DOUBLE_MINOR, MIXED, MASSIVE};
+const int setbackResult[] =     {EMPTY,   MAJOR,        MINOR,        MINOR,        MAJOR,	      EMPTY};
+const int difficultyResult[] =  {EMPTY,   MINOR,        MIXED,        DOUBLE_MAJOR, MINOR,        MINOR,	DOUBLE_MINOR,	MAJOR};
+const int challengeResult[] =   {MASSIVE, DOUBLE_MINOR, DOUBLE_MAJOR, MAJOR,        DOUBLE_MAJOR, MINOR,	MAJOR,			 MINOR,	 DOUBLE_MINOR, MIXED,        MIXED, EMPTY};
+
+const int* resultTable[] = { boostResult, abilityResult, proficiencyResult, setbackResult, difficultyResult, challengeResult };
 
 const int diceSize = 139;
 
 const sf::Color diceColors[] = { { 250, 250, 180 }, {194,227,238}, {65,167,21}, {248,240,53}, {53,53,53}, {38,0,70}, {234,0,0} };
+const int diceSizes[] = { 100, 6, 8, 12, 6, 8, 12 };
 
 const float uiScale = 0.5f;
 const sf::Vector2f delta(10, 10);
@@ -32,6 +36,12 @@ const sf::Color buttonColor(190, 150, 70);
 sf::IntRect buttons[2];
 sf::IntRect arrowsUp[TYPESIZE];
 sf::IntRect arrowsDown[TYPESIZE];
+
+struct DiceResult
+{
+	DiceType type;
+	int value; // can be converted to ResultType
+};
 
 void drawDice(sf::RenderTarget& target, int x, int y, sf::RectangleShape& dice, DiceType type, ResultType result, float scale = 1.0f)
 {
@@ -74,7 +84,6 @@ void drawUi(sf::RenderTarget& target, sf::ConvexShape& d100, sf::RectangleShape&
 
 	sf::RectangleShape button;
 	button.setSize(sf::Vector2f(139.0f, 139.0f / 2.0f));
-	button.setOrigin(button.getSize() / 2.0f);
 	button.setScale(uiScale, uiScale);
 	button.setFillColor(buttonColor);
 
@@ -94,7 +103,7 @@ void drawUi(sf::RenderTarget& target, sf::ConvexShape& d100, sf::RectangleShape&
 
 	for (int i = 0; i < TYPESIZE - 1; ++i)
 	{
-		sprintf(ctext, "%02d", dicesToThrow[i]);
+		sprintf(ctext, "%02d", dicesToThrow[i+1]);
 		text.setString(ctext);
 		text.setPosition(d100.getPosition().x - 22 + 3 + (diceSize*uiScale + delta.x) * (i + 1) - 5, d100.getPosition().y - 20 + 3);
 		if (i > PROFICIENCY)
@@ -122,9 +131,34 @@ void drawUi(sf::RenderTarget& target, sf::ConvexShape& d100, sf::RectangleShape&
 	target.draw(text);
 }
 
+void roll(int diceToThrow[], std::list<DiceResult>& results)
+{
+	std::cout << "rolling " << diceToThrow[0] << " d100" << std::endl;
+	for (int i = 0; i < diceToThrow[0]; ++i)
+	{
+		DiceResult r;
+		r.type = D100;
+		r.value = rand() % 100 + 1;
+		results.emplace_back(r);
+	}
+
+	for (int i = 1; i < TYPESIZE; ++i)
+	{
+		std::cout << "rolling " << diceToThrow[0] << " of type " << i << " max " << diceSizes[i] << std::endl;
+		for (int j = 0; j < diceToThrow[i]; ++j)
+		{
+			DiceResult r;
+			r.type = DiceType(i);
+			r.value = resultTable[i - 1][rand() % diceSizes[i]];
+			results.emplace_back(r);
+		}
+	}
+}
+
 int main(int argc, char** argv)
 {
     /** SFML STUFF **/
+	srand(time(nullptr));
 
     sf::RenderWindow window(sf::VideoMode(WIDTH, HEIGHT), "SW FaD Dice Roller");
     sf::Font font;
@@ -160,15 +194,15 @@ int main(int argc, char** argv)
 	arrow.setPoint(1, sf::Vector2f(20, 0));
 	arrow.setPoint(2, sf::Vector2f(-20, 0));
 
-	buttons[0].width = 139.0f;
-	buttons[0].height = 139.0f / 2.0f;
-	buttons[0].left = WIDTH - delta.x - buttons[0].width / 2.0f * uiScale;
-	buttons[0].top = (int)(diceSize*uiScale - delta.y*(1 + uiScale));
+	buttons[0].width = 139.0f * uiScale;
+	buttons[0].height = 139.0f / 2.0f * uiScale;
+	buttons[0].left = WIDTH - delta.x - buttons[0].width;
+	buttons[0].top = (int)(diceSize*uiScale - delta.y*(1 + uiScale) - buttons[0].height / 2);
 
-	buttons[1].width = 139.0f;
-	buttons[1].height = 139.0f / 2.0f;
+	buttons[1].width = buttons[0].width;
+	buttons[1].height = buttons[0].height;
 	buttons[1].left = buttons[0].left;
-	buttons[1].top = (int)(diceSize*uiScale + delta.y*(5 + uiScale));
+	buttons[1].top = (int)(diceSize*uiScale + delta.y*(5 + uiScale) - buttons[0].height / 2);
 
 	for (int i = 0; i < TYPESIZE; ++i)
 	{
@@ -186,8 +220,10 @@ int main(int argc, char** argv)
 	arrowsDown[0].left = arrowsUp[0].left;
 
 	int dicesToThrow[TYPESIZE] = { 0 };
+	std::list<DiceResult> resultList;
 
 	float uiScale = 0.5f;
+	sf::Vector2u mouse;
 
     //the loop
     while (window.isOpen())
@@ -208,37 +244,64 @@ int main(int argc, char** argv)
                         break;
                 }
             }
+			else if (event.type == sf::Event::MouseMoved)
+			{
+				mouse.x = event.mouseMove.x;
+				mouse.y = event.mouseMove.y;
+			}
             else if (event.type == sf::Event::MouseButtonReleased)
             {
-				if (buttons[0].contains(event.mouseButton.x, event.mouseButton.y))
+				if (buttons[0].contains(mouse.x, mouse.y))
 				{
-					std::cout << "reset" << std::endl;
+					for (int i = 0; i < TYPESIZE; ++i)
+					{
+						dicesToThrow[i] = 0;
+					}
 				}
-				else if(buttons[1].contains(event.mouseButton.x, event.mouseButton.y))
+				else if(buttons[1].contains(mouse.x, mouse.y))
 				{
-					std::cout << "roll" << std::endl;
+					resultList.clear();
+					std::cout << "###################################" << std::endl;
+					roll(dicesToThrow, resultList);
+					int total = 0;
+					for (int i = 0; i < TYPESIZE; ++i)
+					{
+						total += dicesToThrow[i];
+					}
+					std::cout << "Threw " << total << " dices" << std::endl;
+					for (auto& r : resultList)
+					{
+						std::cout << "\trolled " << r.value << " for type " << r.type << std::endl;
+					}
 				}
 				else
 				{
 					for (int i = 0; i < TYPESIZE; ++i)
 					{
-						if (arrowsUp[i].contains(event.mouseButton.x, event.mouseButton.y))
+						if (arrowsUp[i].contains(mouse.x, mouse.y))
 						{
-							std::cout << "Arrow up " << i << std::endl;
+							if (dicesToThrow[i] < 100)
+							{
+								++dicesToThrow[i];
+							}
 						}
-						else if (arrowsDown[i].contains(event.mouseButton.x, event.mouseButton.y))
+						else if (arrowsDown[i].contains(mouse.x, mouse.y))
 						{
-							std::cout << "Arrow down " << i << std::endl;
+							if (dicesToThrow[i] > 0)
+							{
+								--dicesToThrow[i];
+							}
 						}
 					}
 				}
             }
         }
+
         window.clear(sf::Color(40,45,100));
 		drawUi(window, d100Shape, diceSheet, arrow, font, dicesToThrow);
 		window.display();
 
-        sf::sleep(sf::milliseconds(100));
+        sf::sleep(sf::milliseconds(16));
     }
 
     return 0;
