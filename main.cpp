@@ -52,7 +52,7 @@ void drawArrow(sf::RenderTarget& target, sf::ConvexShape& arrow, int x, int y, s
 	target.draw(arrow);
 }
 
-void drawUi(sf::RenderTarget& target, sf::ConvexShape& d100, sf::RectangleShape& dices, sf::ConvexShape& arrow)
+void drawUi(sf::RenderTarget& target, sf::ConvexShape& d100, sf::RectangleShape& dices, sf::ConvexShape& arrow, sf::Font& font, int dicesToThrow[D100 + 1])
 {
 	drawD100(target, (int)(diceSize*uiScale / 2.0f + delta.x), (int)(diceSize*uiScale + delta.y*2) , d100, uiScale);
 	for (int i = 0; i < D100; ++i)
@@ -74,12 +74,48 @@ void drawUi(sf::RenderTarget& target, sf::ConvexShape& d100, sf::RectangleShape&
 	button.setScale(uiScale, uiScale);
 	button.setFillColor(buttonColor);
 
+	sf::Text text;
+	text.setFont(font);
+	text.setColor(sf::Color::Black);
+
+	//dices amounts
+	char ctext[5];
+
+	//D100
+	sprintf(ctext, "%02d", dicesToThrow[D100]);
+	text.setPosition(d100.getPosition().x - 22 + 3, d100.getPosition().y - 20 + 3);
+	text.setString(ctext);
+	text.setCharacterSize(25);
+	target.draw(text);
+
+	for (int i = 0; i < D100; ++i)
+	{
+		sprintf(ctext, "%02d", dicesToThrow[i]);
+		text.setString(ctext);
+		text.setPosition(d100.getPosition().x - 22 + 3 + (diceSize*uiScale + delta.x) * (i + 1) - 5, d100.getPosition().y - 20 + 3);
+		if (i > PROFICIENCY)
+		{
+			text.setColor(sf::Color::White);
+		}
+		target.draw(text);
+	}
+	
+	text.setCharacterSize(button.getSize().y * uiScale * button.getScale().y);
+	text.setColor(sf::Color::Black);
+
 	//button reset
 	button.setPosition(WIDTH - delta.x - button.getSize().x / 2.0f * uiScale, (int)(diceSize*uiScale - delta.y*(1 + uiScale)));
 	target.draw(button);
+	text.setString("RESET");
+	text.setPosition(button.getPosition().x - button.getOrigin().x/2 + 3, button.getPosition().y - button.getOrigin().y/2 + 6);
+	target.draw(text);
+
 	//button Roll
 	button.setPosition(WIDTH - delta.x - button.getSize().x / 2.0f * uiScale, (int)(diceSize*uiScale + delta.y*(5 + uiScale)));
 	target.draw(button);
+	text.setString("ROLL");
+	text.setPosition(button.getPosition().x - button.getOrigin().x / 2 + 10, button.getPosition().y - button.getOrigin().y / 2 + 6);
+	target.draw(text);
 }
 
 int main(int argc, char** argv)
@@ -151,8 +187,8 @@ int main(int argc, char** argv)
             {
             }
         }
-        window.clear(sf::Color(30,30,30));
-		drawUi(window, d100Shape, diceSheet, arrow);
+        window.clear(sf::Color(40,45,100));
+		drawUi(window, d100Shape, diceSheet, arrow, font, dicesToThrow);
 		window.display();
 
         sf::sleep(sf::milliseconds(100));
