@@ -7,8 +7,8 @@
 #define WIDTH   640
 #define HEIGHT  480
 
-//french :       fortune, aptitude, maitrise,   infortune, difficulte, defi
-enum DiceType   {BOOST,   ABILITY, PROFICIENCY, SETBACK,   DIFFICULTY, CHALLENGE, D100};
+//french :			   fortune, aptitude, maitrise,   infortune, difficulte, defi
+enum DiceType   { D100, BOOST,   ABILITY, PROFICIENCY, SETBACK,   DIFFICULTY, CHALLENGE, TYPESIZE};
 enum ResultType {EMPTY, MINOR, MAJOR, MASSIVE, DOUBLE_MINOR, DOUBLE_MAJOR, MIXED};
 
 //these tables are used to correspond to the actual placement in the real dices
@@ -22,12 +22,16 @@ const int challengeResult[] =   {MASSIVE, DOUBLE_MINOR, DOUBLE_MAJOR, MAJOR,    
 
 const int diceSize = 139;
 
-const sf::Color diceColors[] = { {194,227,238}, {65,167,21}, {248,240,53}, {53,53,53}, {38,0,70}, {234,0,0},  { 250, 250, 180 } };
+const sf::Color diceColors[] = { { 250, 250, 180 }, {194,227,238}, {65,167,21}, {248,240,53}, {53,53,53}, {38,0,70}, {234,0,0} };
 
 const float uiScale = 0.5f;
 const sf::Vector2f delta(10, 10);
 
 const sf::Color buttonColor(190, 150, 70);
+
+sf::IntRect buttons[2];
+sf::IntRect arrowsUp[TYPESIZE];
+sf::IntRect arrowsDOwn[TYPESIZE];
 
 void drawDice(sf::RenderTarget& target, int x, int y, sf::RectangleShape& dice, DiceType type, ResultType result, float scale = 1.0f)
 {
@@ -55,17 +59,17 @@ void drawArrow(sf::RenderTarget& target, sf::ConvexShape& arrow, int x, int y, s
 void drawUi(sf::RenderTarget& target, sf::ConvexShape& d100, sf::RectangleShape& dices, sf::ConvexShape& arrow, sf::Font& font, int dicesToThrow[D100 + 1])
 {
 	drawD100(target, (int)(diceSize*uiScale / 2.0f + delta.x), (int)(diceSize*uiScale + delta.y*2) , d100, uiScale);
-	for (int i = 0; i < D100; ++i)
+	for (int i = 0; i < TYPESIZE - 1; ++i)
 	{
 		drawDice(target, (int)((i+1.5f)*(diceSize*uiScale + delta.x)), (int)(diceSize*uiScale + delta.y*2), dices, DiceType(i), EMPTY, uiScale);
 	}
 
 	drawArrow(target, arrow, (int)(diceSize*uiScale / 2.0f + delta.x), (int)(delta.y - arrow.getPoint(0).y), diceColors[D100], true);
 	drawArrow(target, arrow, (int)(diceSize*uiScale / 2.0f + delta.x), (int)(3*delta.y - arrow.getPoint(0).y + diceSize*uiScale), diceColors[D100], false);
-	for (int i = 0; i < D100; ++i)
+	for (int i = 1; i < TYPESIZE; ++i)
 	{
-		drawArrow(target, arrow, (int)((i + 1.5f)*(diceSize*uiScale + delta.x)), (int)(delta.y - arrow.getPoint(0).y), diceColors[i], true);
-		drawArrow(target, arrow, (int)((i + 1.5f)*(diceSize*uiScale + delta.x)), (int)(3 * delta.y - arrow.getPoint(0).y + diceSize*uiScale), diceColors[i], false);
+		drawArrow(target, arrow, (int)((i + 1.5f - 1)*(diceSize*uiScale + delta.x)), (int)(delta.y - arrow.getPoint(0).y), diceColors[i], true);
+		drawArrow(target, arrow, (int)((i + 1.5f - 1)*(diceSize*uiScale + delta.x)), (int)(3 * delta.y - arrow.getPoint(0).y + diceSize*uiScale), diceColors[i], false);
 	}
 
 	sf::RectangleShape button;
@@ -88,7 +92,7 @@ void drawUi(sf::RenderTarget& target, sf::ConvexShape& d100, sf::RectangleShape&
 	text.setCharacterSize(25);
 	target.draw(text);
 
-	for (int i = 0; i < D100; ++i)
+	for (int i = 0; i < TYPESIZE - 1; ++i)
 	{
 		sprintf(ctext, "%02d", dicesToThrow[i]);
 		text.setString(ctext);
@@ -104,14 +108,14 @@ void drawUi(sf::RenderTarget& target, sf::ConvexShape& d100, sf::RectangleShape&
 	text.setColor(sf::Color::Black);
 
 	//button reset
-	button.setPosition(WIDTH - delta.x - button.getSize().x / 2.0f * uiScale, (int)(diceSize*uiScale - delta.y*(1 + uiScale)));
+	button.setPosition(buttons[0].left, buttons[0].top);
 	target.draw(button);
 	text.setString("RESET");
 	text.setPosition(button.getPosition().x - button.getOrigin().x/2 + 3, button.getPosition().y - button.getOrigin().y/2 + 6);
 	target.draw(text);
 
 	//button Roll
-	button.setPosition(WIDTH - delta.x - button.getSize().x / 2.0f * uiScale, (int)(diceSize*uiScale + delta.y*(5 + uiScale)));
+	button.setPosition(buttons[1].left, buttons[1].top);
 	target.draw(button);
 	text.setString("ROLL");
 	text.setPosition(button.getPosition().x - button.getOrigin().x / 2 + 10, button.getPosition().y - button.getOrigin().y / 2 + 6);
@@ -156,7 +160,17 @@ int main(int argc, char** argv)
 	arrow.setPoint(1, sf::Vector2f(20, 0));
 	arrow.setPoint(2, sf::Vector2f(-20, 0));
 
-	int dicesToThrow[D100 + 1] = { 0 };
+	buttons[0].width = 139.0f;
+	buttons[0].height = 139.0f / 2.0f;
+	buttons[0].left = WIDTH - delta.x - buttons[0].width / 2.0f * uiScale;
+	buttons[0].top = (int)(diceSize*uiScale - delta.y*(1 + uiScale));
+
+	buttons[1].width = 139.0f;
+	buttons[1].height = 139.0f / 2.0f;
+	buttons[1].left = buttons[0].left;
+	buttons[1].top = (int)(diceSize*uiScale + delta.y*(5 + uiScale));
+
+	int dicesToThrow[TYPESIZE] = { 0 };
 
 	float uiScale = 0.5f;
 
@@ -179,13 +193,20 @@ int main(int argc, char** argv)
                         break;
                 }
             }
-            else if (event.type == sf::Event::MouseButtonPressed)
-            {
-                //event.mouseButton.x, event.mouseButton.y
-            }
             else if (event.type == sf::Event::MouseButtonReleased)
             {
+				if (buttons[0].contains(event.mouseButton.x, event.mouseButton.y))
+				{
+					std::cout << "reset" << std::endl;
+				}
+				else if(buttons[1].contains(event.mouseButton.x, event.mouseButton.y))
+				{
+					std::cout << "roll" << std::endl;
+				}
             }
+			else
+			{
+			}
         }
         window.clear(sf::Color(40,45,100));
 		drawUi(window, d100Shape, diceSheet, arrow, font, dicesToThrow);
