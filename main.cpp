@@ -5,6 +5,11 @@
 
 #include <SFML/Graphics.hpp>
 
+#if defined(_WIN32) || defined(WIN32)
+#include <windows.h>
+#pragma comment(linker, "/SUBSYSTEM:windows /ENTRY:mainCRTStartup")
+#endif
+
 #define WIDTH   640
 #define HEIGHT  480
 
@@ -47,7 +52,7 @@ void drawDice(sf::RenderTarget& target, int x, int y, sf::RectangleShape& dice, 
 {
 	dice.setScale(scale, scale);
 	dice.setPosition((float)x, (float)y);
-	dice.setTextureRect(sf::IntRect(type*diceSize, result*diceSize, diceSize, diceSize));
+	dice.setTextureRect(sf::IntRect((type-1)*diceSize, result*diceSize, diceSize, diceSize));
 	target.draw(dice);
 }
 
@@ -71,7 +76,7 @@ void drawUi(sf::RenderTarget& target, sf::ConvexShape& d100, sf::RectangleShape&
 	drawD100(target, (int)(diceSize*uiScale / 2.0f + delta.x), (int)(diceSize*uiScale + delta.y*2) , d100, uiScale);
 	for (int i = 0; i < TYPESIZE - 1; ++i)
 	{
-		drawDice(target, (int)((i+1.5f)*(diceSize*uiScale + delta.x)), (int)(diceSize*uiScale + delta.y*2), dices, DiceType(i), EMPTY, uiScale);
+		drawDice(target, (int)((i+1.5f)*(diceSize*uiScale + delta.x)), (int)(diceSize*uiScale + delta.y*2), dices, DiceType(i+1), EMPTY, uiScale);
 	}
 
 	drawArrow(target, arrow, (int)(diceSize*uiScale / 2.0f + delta.x), (int)(delta.y - arrow.getPoint(0).y), diceColors[D100], true);
@@ -133,7 +138,6 @@ void drawUi(sf::RenderTarget& target, sf::ConvexShape& d100, sf::RectangleShape&
 
 void roll(int diceToThrow[], std::list<DiceResult>& results)
 {
-	std::cout << "rolling " << diceToThrow[0] << " d100" << std::endl;
 	for (int i = 0; i < diceToThrow[0]; ++i)
 	{
 		DiceResult r;
@@ -144,7 +148,6 @@ void roll(int diceToThrow[], std::list<DiceResult>& results)
 
 	for (int i = 1; i < TYPESIZE; ++i)
 	{
-		std::cout << "rolling " << diceToThrow[0] << " of type " << i << " max " << diceSizes[i] << std::endl;
 		for (int j = 0; j < diceToThrow[i]; ++j)
 		{
 			DiceResult r;
@@ -154,6 +157,44 @@ void roll(int diceToThrow[], std::list<DiceResult>& results)
 		}
 	}
 }
+
+void drawResults(sf::RenderTarget& target, const std::list<DiceResult>& results, sf::RectangleShape& dices, sf::ConvexShape& d100, sf::Font& font)
+{
+	float scale = 0.5; //9 max with scale 0.5
+	int dy = arrowsDown[0].top + arrowsDown[0].height + 5 + diceSize * scale;
+	int dx = diceSize * scale / 2;
+	int x = dx;
+	int y = dy;
+
+	sf::Text text;
+	text.setFont(font);
+	text.setCharacterSize(20);
+	text.setColor(sf::Color::Black);
+
+	for (const DiceResult& r : results)
+	{
+		if (r.type == D100)
+		{
+			drawD100(target, x, y, d100, scale);
+			char ctext[5];
+			sprintf(ctext, "%02d", r.value);
+			text.setString(ctext);
+			text.setPosition(x - diceSize*scale/2 + text.getCharacterSize(), y - text.getCharacterSize() / 2 - 3);
+			target.draw(text);
+		}
+		else
+		{
+			drawDice(target, x, y, dices, r.type, (ResultType)r.value, scale);
+		}
+		x += diceSize*scale;
+		if (x >= WIDTH)
+		{
+			x = dx;
+			y += diceSize*scale;
+		}
+	}
+}
+
 
 int main(int argc, char** argv)
 {
@@ -253,6 +294,7 @@ int main(int argc, char** argv)
             {
 				if (buttons[0].contains(mouse.x, mouse.y))
 				{
+					resultList.clear();
 					for (int i = 0; i < TYPESIZE; ++i)
 					{
 						dicesToThrow[i] = 0;
@@ -261,18 +303,7 @@ int main(int argc, char** argv)
 				else if(buttons[1].contains(mouse.x, mouse.y))
 				{
 					resultList.clear();
-					std::cout << "###################################" << std::endl;
 					roll(dicesToThrow, resultList);
-					int total = 0;
-					for (int i = 0; i < TYPESIZE; ++i)
-					{
-						total += dicesToThrow[i];
-					}
-					std::cout << "Threw " << total << " dices" << std::endl;
-					for (auto& r : resultList)
-					{
-						std::cout << "\trolled " << r.value << " for type " << r.type << std::endl;
-					}
 				}
 				else
 				{
@@ -299,6 +330,7 @@ int main(int argc, char** argv)
 
         window.clear(sf::Color(40,45,100));
 		drawUi(window, d100Shape, diceSheet, arrow, font, dicesToThrow);
+		drawResults(window, resultList, diceSheet, d100Shape, font);
 		window.display();
 
         sf::sleep(sf::milliseconds(16));
