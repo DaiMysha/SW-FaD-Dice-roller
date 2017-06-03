@@ -31,7 +31,7 @@ const sf::Color buttonColor(190, 150, 70);
 
 sf::IntRect buttons[2];
 sf::IntRect arrowsUp[TYPESIZE];
-sf::IntRect arrowsDOwn[TYPESIZE];
+sf::IntRect arrowsDown[TYPESIZE];
 
 void drawDice(sf::RenderTarget& target, int x, int y, sf::RectangleShape& dice, DiceType type, ResultType result, float scale = 1.0f)
 {
@@ -170,6 +170,21 @@ int main(int argc, char** argv)
 	buttons[1].left = buttons[0].left;
 	buttons[1].top = (int)(diceSize*uiScale + delta.y*(5 + uiScale));
 
+	for (int i = 0; i < TYPESIZE; ++i)
+	{
+		arrowsUp[i].width = 40;
+		arrowsUp[i].height = 33;
+		arrowsUp[i].left = (int)((i + 1.5f - 1)*(diceSize*uiScale + delta.x)) - arrowsUp[i].width/2;
+		arrowsUp[i].top = (int)(delta.y - arrow.getPoint(0).y) - arrowsUp[i].height;
+
+		arrowsDown[i].width = 40;
+		arrowsDown[i].height = 33;
+		arrowsDown[i].left = arrowsUp[i].left;
+		arrowsDown[i].top = (int)(3 * delta.y - arrow.getPoint(0).y + diceSize*uiScale);
+	}
+	arrowsUp[0].left += 5;
+	arrowsDown[0].left = arrowsUp[0].left;
+
 	int dicesToThrow[TYPESIZE] = { 0 };
 
 	float uiScale = 0.5f;
@@ -203,10 +218,21 @@ int main(int argc, char** argv)
 				{
 					std::cout << "roll" << std::endl;
 				}
+				else
+				{
+					for (int i = 0; i < TYPESIZE; ++i)
+					{
+						if (arrowsUp[i].contains(event.mouseButton.x, event.mouseButton.y))
+						{
+							std::cout << "Arrow up " << i << std::endl;
+						}
+						else if (arrowsDown[i].contains(event.mouseButton.x, event.mouseButton.y))
+						{
+							std::cout << "Arrow down " << i << std::endl;
+						}
+					}
+				}
             }
-			else
-			{
-			}
         }
         window.clear(sf::Color(40,45,100));
 		drawUi(window, d100Shape, diceSheet, arrow, font, dicesToThrow);
