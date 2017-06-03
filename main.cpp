@@ -22,12 +22,64 @@ const int challengeResult[] =   {MASSIVE, DOUBLE_MINOR, DOUBLE_MAJOR, MAJOR,    
 
 const int diceSize = 139;
 
-void drawDice(sf::RenderTarget& target, int x, int y, sf::RectangleShape& dice, DiceType type, ResultType result, float scale)
+const sf::Color diceColors[] = { {194,227,238}, {65,167,21}, {248,240,53}, {53,53,53}, {38,0,70}, {234,0,0},  { 250, 250, 180 } };
+
+const float uiScale = 0.5f;
+const sf::Vector2f delta(10, 10);
+
+const sf::Color buttonColor(190, 150, 70);
+
+void drawDice(sf::RenderTarget& target, int x, int y, sf::RectangleShape& dice, DiceType type, ResultType result, float scale = 1.0f)
 {
 	dice.setScale(scale, scale);
-	dice.setPosition(x, y);
-	dice.setTextureRect(sf::IntRect(type*diceSize, type*diceSize, diceSize, diceSize));
+	dice.setPosition((float)x, (float)y);
+	dice.setTextureRect(sf::IntRect(type*diceSize, result*diceSize, diceSize, diceSize));
 	target.draw(dice);
+}
+
+void drawD100(sf::RenderTarget& target, int x, int y, sf::ConvexShape& shape, float scale = 1.0f)
+{
+	shape.setScale(scale, scale);
+	shape.setPosition((float)x, (float)y);
+	target.draw(shape);
+}
+
+void drawArrow(sf::RenderTarget& target, sf::ConvexShape& arrow, int x, int y, sf::Color color, bool up)
+{
+	arrow.setFillColor(color);
+	arrow.setPosition((float)x, (float)y);
+	arrow.setScale(1.0f, up ? 1.0f : -1.0f);
+	target.draw(arrow);
+}
+
+void drawUi(sf::RenderTarget& target, sf::ConvexShape& d100, sf::RectangleShape& dices, sf::ConvexShape& arrow)
+{
+	drawD100(target, (int)(diceSize*uiScale / 2.0f + delta.x), (int)(diceSize*uiScale + delta.y*2) , d100, uiScale);
+	for (int i = 0; i < D100; ++i)
+	{
+		drawDice(target, (int)((i+1.5f)*(diceSize*uiScale + delta.x)), (int)(diceSize*uiScale + delta.y*2), dices, DiceType(i), EMPTY, uiScale);
+	}
+
+	drawArrow(target, arrow, (int)(diceSize*uiScale / 2.0f + delta.x), (int)(delta.y - arrow.getPoint(0).y), diceColors[D100], true);
+	drawArrow(target, arrow, (int)(diceSize*uiScale / 2.0f + delta.x), (int)(3*delta.y - arrow.getPoint(0).y + diceSize*uiScale), diceColors[D100], false);
+	for (int i = 0; i < D100; ++i)
+	{
+		drawArrow(target, arrow, (int)((i + 1.5f)*(diceSize*uiScale + delta.x)), (int)(delta.y - arrow.getPoint(0).y), diceColors[i], true);
+		drawArrow(target, arrow, (int)((i + 1.5f)*(diceSize*uiScale + delta.x)), (int)(3 * delta.y - arrow.getPoint(0).y + diceSize*uiScale), diceColors[i], false);
+	}
+
+	sf::RectangleShape button;
+	button.setSize(sf::Vector2f(139.0f, 139.0f / 2.0f));
+	button.setOrigin(button.getSize() / 2.0f);
+	button.setScale(uiScale, uiScale);
+	button.setFillColor(buttonColor);
+
+	//button reset
+	button.setPosition(WIDTH - delta.x - button.getSize().x / 2.0f * uiScale, (int)(diceSize*uiScale - delta.y*(1 + uiScale)));
+	target.draw(button);
+	//button Roll
+	button.setPosition(WIDTH - delta.x - button.getSize().x / 2.0f * uiScale, (int)(diceSize*uiScale + delta.y*(5 + uiScale)));
+	target.draw(button);
 }
 
 int main(int argc, char** argv)
@@ -41,22 +93,36 @@ int main(int argc, char** argv)
         std::cerr << "Impossible to load font" << std::endl;
         return -1;
     }
+
     sf::Texture diceTexture;
     if(!diceTexture.loadFromFile("data\\dices.png"))
     {
         std::cerr << "Impossible to load dice picture" << std::endl;
         return -1;
     }
-    sf::RectangleShape rectangle;
-    rectangle.setSize(sf::Vector2f(diceSize, diceSize));
-    float scale = 0.3f;
-    rectangle.setScale(scale,scale);
-    rectangle.setTexture(&diceTexture);
-    rectangle.setTextureRect(sf::IntRect(0,0,diceSize,diceSize));
-    int x = 0;
-    int y = 0;
+    sf::RectangleShape diceSheet;
+	diceSheet.setSize(sf::Vector2f((float)diceSize, (float)diceSize));
+	diceSheet.setTexture(&diceTexture);
+	diceSheet.setTextureRect(sf::IntRect(0,0,diceSize,diceSize));
+	diceSheet.setOrigin(sf::Vector2f(diceSize / 2.0f, diceSize / 2.0f));
 
-	int diceCount[MIXED + 1] = { 0 };
+	sf::ConvexShape d100Shape;
+	d100Shape.setPointCount(4);
+	d100Shape.setPoint(0, sf::Vector2f(0, -66));
+	d100Shape.setPoint(1, sf::Vector2f(66, 0));
+	d100Shape.setPoint(2, sf::Vector2f(0, 66));
+	d100Shape.setPoint(3, sf::Vector2f(-66, 0));
+	d100Shape.setFillColor(sf::Color(250, 250, 180));
+
+	sf::ConvexShape arrow;
+	arrow.setPointCount(3);
+	arrow.setPoint(0, sf::Vector2f(0, -33));
+	arrow.setPoint(1, sf::Vector2f(20, 0));
+	arrow.setPoint(2, sf::Vector2f(-20, 0));
+
+	int dicesToThrow[D100 + 1] = { 0 };
+
+	float uiScale = 0.5f;
 
     //the loop
     while (window.isOpen())
@@ -85,21 +151,10 @@ int main(int argc, char** argv)
             {
             }
         }
-        window.clear(sf::Color(127,127,127));
+        window.clear(sf::Color(30,30,30));
+		drawUi(window, d100Shape, diceSheet, arrow);
+		window.display();
 
-		drawDice(window, 0, 0, rectangle, DiceType(x), ResultType(y), 0.3);
-        
-        window.display();
-        ++x;
-        if(x > CHALLENGE)
-        {
-            x = 0;
-            ++y;
-            if(y > MIXED)
-            {
-                y = 0;
-            }
-        }
         sf::sleep(sf::milliseconds(100));
     }
 
